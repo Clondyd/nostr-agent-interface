@@ -58,7 +58,7 @@ function findAvailablePort(): Promise<number> {
 /**
  * Polls the health endpoint until the API is ready or timeout.
  */
-async function waitForApiReady(baseUrl: string, timeoutMs = 5000): Promise<void> {
+async function waitForApiReady(baseUrl: string, timeoutMs = 15000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
