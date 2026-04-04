@@ -144,7 +144,7 @@ npm run build
 
 ## Tool Surface
 
-This interface currently exposes **40 tools** across:
+This interface currently exposes **48 tools** across:
 
 1. reading/querying
 2. identity/profile
@@ -153,6 +153,7 @@ This interface currently exposes **40 tools** across:
 5. DMs (NIP-04 and NIP-44/NIP-17)
 6. anonymous actions (note + zap)
 7. NIP-19 conversion/analysis
+8. Blossom storage
 
 Canonical tool contracts live in `artifacts/tools.json`.
 
@@ -214,12 +215,13 @@ Sample config file: `claude_desktop_config.sample.json`
 1. `llm/README.md`
 2. `llm/tool-catalog.md`
 3. `llm/playbook.md`
-4. `docs/cli.md`
-5. `docs/api.md`
-6. `docs/testing.md`
-7. `profile/README.md`
-8. `note/README.md`
-9. `zap/README.md`
+4. `.agents/skills/nostr-agent-interface-cli/SKILL.md`
+5. `docs/cli.md`
+6. `docs/api.md`
+7. `docs/testing.md`
+8. `profile/README.md`
+9. `note/README.md`
+10. `zap/README.md`
 
 ## Development
 

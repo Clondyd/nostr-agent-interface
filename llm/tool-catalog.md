@@ -68,6 +68,17 @@ Lineage note: this contract originates from the original Nostr MCP Server JARC t
 39. `convertNip19`
 40. `analyzeNip19`
 
+## Blossom Storage
+
+41. `getBlossomServers`
+42. `setBlossomServers`
+43. `getBlossomUrl`
+44. `uploadBlob`
+45. `downloadBlob`
+46. `listBlobs`
+47. `deleteBlob`
+48. `mirrorBlob`
+
 ## Input Normalization Notes
 
 1. Public keys generally accept hex and `npub`.

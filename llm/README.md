@@ -2,6 +2,8 @@
 
 This folder is the model-facing documentation for building LLM workflows on top of **Nostr Agent Interface**.
 
+This repo also ships a repo-local Codex skill for CLI-first agent usage.
+
 Nostr Agent Interface extends the original Nostr MCP Server JARC toolset and keeps one canonical contract surfaced through three transports:
 
 1. CLI (preferred for local agents)
@@ -19,6 +21,7 @@ Nostr Agent Interface extends the original Nostr MCP Server JARC toolset and kee
 1. `tool-catalog.md` - grouped catalog of tool intent.
 2. `playbook.md` - prompting patterns, guardrails, workflow templates.
 3. `../docs/cli.md` - schema-driven CLI command model and examples.
+4. `../.agents/skills/nostr-agent-interface-cli/SKILL.md` - repo-local Codex skill for safe CLI usage.
 
 ## Quick Start
 
