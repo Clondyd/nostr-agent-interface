@@ -17,7 +17,7 @@ import {
   normalizePrivateKey,
   npubToHex,
 } from "../utils/index.js";
-import { DEFAULT_RELAYS, KINDS } from "../utils/constants.js";
+import { DEFAULT_RELAYS, KINDS, type Kind } from "../utils/constants.js";
 
 import { queryEvents, publishNostrEvent, signNostrEvent } from "../event/event-tools.js";
 
@@ -42,7 +42,7 @@ function normalizeEventId(input: string): string | null {
 
 async function getLatestEventForAuthor(params: {
   relays: string[];
-  kind: number;
+  kind: Kind;
   authorHex: string;
 }): Promise<NostrEvent | null> {
   const res = await queryEvents({

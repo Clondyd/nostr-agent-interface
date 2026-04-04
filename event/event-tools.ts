@@ -3,7 +3,7 @@ import { createEvent, getEventHash, signEvent } from "snstr";
 import { schnorr } from "@noble/curves/secp256k1";
 import WebSocket from "ws";
 
-import { DEFAULT_RELAYS, QUERY_TIMEOUT, KINDS } from "../utils/constants.js";
+import { DEFAULT_RELAYS, QUERY_TIMEOUT, KINDS, type Kind } from "../utils/constants.js";
 import {
   NostrEvent,
   NostrFilter,
@@ -210,7 +210,7 @@ export async function queryEvents(
   params: {
     relays?: string[];
     authPrivateKey?: string;
-    kinds?: number[];
+    kinds?: Kind[];
     authors?: string[];
     ids?: string[];
     since?: number;
@@ -309,7 +309,7 @@ export const createNostrEventToolConfig = {
 };
 
 export async function createNostrEvent(params: {
-  kind: number;
+  kind: Kind;
   content: string;
   tags?: string[][];
   createdAt?: number;

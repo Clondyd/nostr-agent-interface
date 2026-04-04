@@ -12,7 +12,7 @@ Core principles:
 2. Expose that surface through MCP, CLI, and HTTP API.
 3. Prefer CLI/API for most operational agent workflows while retaining MCP compatibility.
 
-Current tool count: **40**.
+Current tool count: **48**.
 
 Built with:
 

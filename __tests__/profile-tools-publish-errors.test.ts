@@ -1,6 +1,7 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 type ProfileToolsModule = typeof import('../profile/profile-tools.js');
+type ProfileToolsPoolFactory = NonNullable<Parameters<ProfileToolsModule["__setProfileToolsPoolFactoryForTests"]>[0]>;
 
 type MockPool = {
   close: ReturnType<typeof mock>;
@@ -19,13 +20,9 @@ async function loadProfileToolsWithMock(): Promise<{
   const getFreshPoolMock = mock(() => mockPool);
 
   mock.restore();
-  mock.module('../utils/index.js', () => ({
-    DEFAULT_RELAYS: ['wss://mock.relay'],
-    getFreshPool: getFreshPoolMock,
-  }));
-
   const importPath = `../profile/profile-tools.js?mock=${Date.now()}-${Math.random()}`;
   const tools = (await import(importPath)) as ProfileToolsModule;
+  tools.__setProfileToolsPoolFactoryForTests(getFreshPoolMock as ProfileToolsPoolFactory);
 
   return { tools, mockPool, getFreshPoolMock };
 }
@@ -49,7 +46,13 @@ describe('profile-tools publish error paths', () => {
     ]);
   });
 
+  afterEach(() => {
+    tools.__setProfileToolsPoolFactoryForTests();
+    mock.restore();
+  });
+
   afterAll(() => {
+    tools.__setProfileToolsPoolFactoryForTests();
     mock.restore();
   });
 

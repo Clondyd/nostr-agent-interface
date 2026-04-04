@@ -4,6 +4,7 @@ import { sha256 } from '@noble/hashes/sha256'
 import EventEmitter from 'events'
 import { WebSocket, WebSocketServer } from 'ws'
 import { KINDS } from './constants.js'
+import type { Kind } from './constants.js'
 
 /* ================ [ Configuration ] ================ */
 
@@ -17,7 +18,7 @@ let portSeedCounter = 0
 interface EventFilter {
   ids?: string[]
   authors?: string[]
-  kinds?: number[]
+  kinds?: Kind[]
   since?: number
   until?: number
   limit?: number
@@ -28,7 +29,7 @@ interface SignedEvent {
   content: string
   created_at: number
   id: string
-  kind: number
+  kind: Kind
   pubkey: string
   sig: string
   tags: string[][]

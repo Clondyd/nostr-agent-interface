@@ -7,6 +7,7 @@ import {
   encodeEvent,
   encodeAddress
 } from "snstr";
+import type { Kind } from "./constants.js";
 
 /**
  * Simple relay URL validation - checks for ws:// or wss:// protocol
@@ -134,7 +135,7 @@ export interface ConversionInput {
     /** Author pubkey (for nevent/naddr) */
     author?: string;
     /** Event kind (for nevent/naddr) */
-    kind?: number;
+    kind?: Kind;
     /** Identifier for naddr */
     identifier?: string;
   };

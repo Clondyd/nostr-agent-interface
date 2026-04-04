@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'bun:test';
-import { createKeypair, createProfile, updateProfile } from '../profile/profile-tools.js';
+import { describe, it, expect, mock } from 'bun:test';
 import { schnorr } from '@noble/curves/secp256k1';
+
+type ProfileToolsModule = typeof import('../profile/profile-tools.js');
+
+async function loadProfileTools(): Promise<ProfileToolsModule> {
+  mock.restore();
+  return import(`../profile/profile-tools.js?real=${Date.now()}-${Math.random()}`) as Promise<ProfileToolsModule>;
+}
 
 describe('Profile Tools', () => {
   describe('createKeypair', () => {
     it('should generate a valid keypair in both formats by default', async () => {
+      const { createKeypair } = await loadProfileTools();
       const result = await createKeypair();
       
       expect(result.publicKey).toBeDefined();
@@ -22,6 +29,7 @@ describe('Profile Tools', () => {
     });
 
     it('should generate only hex format when requested', async () => {
+      const { createKeypair } = await loadProfileTools();
       const result = await createKeypair('hex');
       
       expect(result.publicKey).toBeDefined();
@@ -31,6 +39,7 @@ describe('Profile Tools', () => {
     });
 
     it('should generate only npub format when requested', async () => {
+      const { createKeypair } = await loadProfileTools();
       const result = await createKeypair('npub');
       
       expect(result.publicKey).toBeUndefined();
@@ -40,6 +49,7 @@ describe('Profile Tools', () => {
     });
 
     it('should generate cryptographically valid keypairs', async () => {
+      const { createKeypair } = await loadProfileTools();
       const result = await createKeypair('hex');
 
       // Verify that the public key can be derived from the private key
@@ -50,6 +60,7 @@ describe('Profile Tools', () => {
 
   describe('createProfile', () => {
     it('should create a profile with minimal data', async () => {
+      const { createKeypair, createProfile } = await loadProfileTools();
       const { privateKey } = await createKeypair('hex');
       
       const result = await createProfile(
@@ -65,6 +76,7 @@ describe('Profile Tools', () => {
     });
 
     it('should create a profile with all metadata fields', async () => {
+      const { createKeypair, createProfile } = await loadProfileTools();
       const { privateKey } = await createKeypair('hex');
       
       const profileData = {
@@ -89,6 +101,7 @@ describe('Profile Tools', () => {
     });
 
     it('should handle nsec format private keys', async () => {
+      const { createKeypair, createProfile } = await loadProfileTools();
       const { nsec } = await createKeypair('npub');
       
       const result = await createProfile(
@@ -103,6 +116,7 @@ describe('Profile Tools', () => {
     });
 
     it('should fail with invalid private key', async () => {
+      const { createProfile } = await loadProfileTools();
       const result = await createProfile(
         'invalid_private_key',
         { name: 'Test User' },
@@ -114,6 +128,7 @@ describe('Profile Tools', () => {
     });
 
     it('should reject malformed nsec values before decode', async () => {
+      const { createProfile } = await loadProfileTools();
       const result = await createProfile(
         'nsec1INVALID*',
         { name: 'Test User' },
@@ -127,6 +142,7 @@ describe('Profile Tools', () => {
 
   describe('updateProfile', () => {
     it('should update a profile (same as create for kind 0)', async () => {
+      const { createKeypair, updateProfile } = await loadProfileTools();
       const { privateKey } = await createKeypair('hex');
       
       const result = await updateProfile(

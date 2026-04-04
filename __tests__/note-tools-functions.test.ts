@@ -3,6 +3,7 @@ import { generateKeypair } from 'snstr';
 import { NostrEvent } from '../utils/index.js';
 
 type NoteToolsModule = typeof import('../note/note-tools.js');
+type NoteToolsPoolFactory = NonNullable<Parameters<NoteToolsModule["__setNoteToolsPoolFactoryForTests"]>[0]>;
 
 type MockPool = {
   close: ReturnType<typeof mock>;
@@ -25,13 +26,9 @@ async function loadNoteToolsWithMock(): Promise<{
   const getFreshPoolMock = mock(() => mockPool);
 
   mock.restore();
-  mock.module('../utils/index.js', () => ({
-    DEFAULT_RELAYS: ['wss://mock.relay'],
-    getFreshPool: getFreshPoolMock,
-  }));
-
   const importPath = `../note/note-tools.js?mock=${Date.now()}-${Math.random()}`;
   const tools = (await import(importPath)) as NoteToolsModule;
+  tools.__setNoteToolsPoolFactoryForTests(getFreshPoolMock as NoteToolsPoolFactory);
 
   return {
     tools,
@@ -58,10 +55,12 @@ describe('Note Tools Functions', () => {
   });
 
   afterEach(() => {
+    tools.__setNoteToolsPoolFactoryForTests();
     mock.restore();
   });
 
   afterAll(() => {
+    tools.__setNoteToolsPoolFactoryForTests();
     mock.restore();
   });
 

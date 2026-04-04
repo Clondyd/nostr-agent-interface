@@ -60,11 +60,15 @@ const EXPECTED_TOOL_NAMES = [
   "decryptDmNip44",
   "decryptNip04",
   "decryptNip44",
+  "deleteBlob",
   "deleteEvent",
+  "downloadBlob",
   "encryptNip04",
   "encryptNip44",
   "follow",
   "getAllZaps",
+  "getBlossomServers",
+  "getBlossomUrl",
   "getContactList",
   "getDmConversationNip04",
   "getDmInboxNip44",
@@ -75,6 +79,8 @@ const EXPECTED_TOOL_NAMES = [
   "getReceivedZaps",
   "getRelayList",
   "getSentZaps",
+  "listBlobs",
+  "mirrorBlob",
   "postAnonymousNote",
   "postNote",
   "publishNostrEvent",
@@ -86,11 +92,13 @@ const EXPECTED_TOOL_NAMES = [
   "sendAnonymousZap",
   "sendDmNip04",
   "sendDmNip44",
+  "setBlossomServers",
   "setRelayList",
   "signNostrEvent",
   "signNote",
   "unfollow",
   "updateProfile",
+  "uploadBlob",
 ].sort();
 
 const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
@@ -153,11 +161,23 @@ const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
     properties: ["ciphertext","privateKey","senderPubkey"],
     propertyTypes: {"privateKey":"string","senderPubkey":"string","ciphertext":"string"},
   },
+  "deleteBlob": {
+    required: ["privateKey","sha256"],
+    properties: ["privateKey","relays","serverUrl","sha256"],
+    propertyTypes: {"privateKey":"string","sha256":"string","serverUrl":"string","relays":"array"},
+    arrayItemTypes: {"relays":"string"},
+  },
   "deleteEvent": {
     required: ["privateKey","targets"],
     properties: ["privateKey","reason","relays","targets"],
     propertyTypes: {"privateKey":"string","targets":"array","reason":"string","relays":"array"},
     arrayItemTypes: {"targets":"string","relays":"string"},
+  },
+  "downloadBlob": {
+    required: ["sha256"],
+    properties: ["outputPath","privateKey","relays","serverUrl","sha256"],
+    propertyTypes: {"sha256":"string","serverUrl":"string","privateKey":"string","relays":"array","outputPath":"string"},
+    arrayItemTypes: {"relays":"string"},
   },
   "encryptNip04": {
     required: ["plaintext","privateKey","recipientPubkey"],
@@ -179,6 +199,18 @@ const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
     required: ["pubkey"],
     properties: ["debug","limit","pubkey","relays","since","until","validateReceipts"],
     propertyTypes: {"pubkey":"string","limit":"number","since":"integer","until":"integer","relays":"array","validateReceipts":"boolean","debug":"boolean"},
+    arrayItemTypes: {"relays":"string"},
+  },
+  "getBlossomServers": {
+    required: [],
+    properties: ["authPrivateKey","privateKey","pubkey","relays"],
+    propertyTypes: {"pubkey":"string","privateKey":"string","relays":"array","authPrivateKey":"string"},
+    arrayItemTypes: {"relays":"string"},
+  },
+  "getBlossomUrl": {
+    required: ["sha256"],
+    properties: ["privateKey","relays","serverUrl","sha256"],
+    propertyTypes: {"sha256":"string","serverUrl":"string","privateKey":"string","relays":"array"},
     arrayItemTypes: {"relays":"string"},
   },
   "getContactList": {
@@ -239,6 +271,18 @@ const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
     required: ["pubkey"],
     properties: ["debug","limit","pubkey","relays","since","until","validateReceipts"],
     propertyTypes: {"pubkey":"string","limit":"number","since":"integer","until":"integer","relays":"array","validateReceipts":"boolean","debug":"boolean"},
+    arrayItemTypes: {"relays":"string"},
+  },
+  "listBlobs": {
+    required: [],
+    properties: ["limit","privateKey","pubkey","relays","serverUrl"],
+    propertyTypes: {"privateKey":"string","pubkey":"string","serverUrl":"string","relays":"array","limit":"integer"},
+    arrayItemTypes: {"relays":"string"},
+  },
+  "mirrorBlob": {
+    required: ["privateKey","sourceUrl"],
+    properties: ["privateKey","relays","serverUrl","sourceUrl"],
+    propertyTypes: {"privateKey":"string","sourceUrl":"string","serverUrl":"string","relays":"array"},
     arrayItemTypes: {"relays":"string"},
   },
   "postAnonymousNote": {
@@ -309,6 +353,12 @@ const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
     propertyTypes: {"privateKey":"string","recipientPubkey":"string","content":"string","relays":"array","authPrivateKey":"string"},
     arrayItemTypes: {"relays":"string"},
   },
+  "setBlossomServers": {
+    required: ["privateKey","servers"],
+    properties: ["privateKey","relays","servers"],
+    propertyTypes: {"privateKey":"string","servers":"array","relays":"array"},
+    arrayItemTypes: {"servers":"string","relays":"string"},
+  },
   "setRelayList": {
     required: ["privateKey","relayList"],
     properties: ["privateKey","relayList","relays"],
@@ -337,6 +387,12 @@ const EXPECTED_TOOL_INPUT_SCHEMAS: Record<string, {
     required: ["privateKey"],
     properties: ["about","lud06","lud16","name","nip05","picture","privateKey","relays","website"],
     propertyTypes: {"privateKey":"string","name":"string","about":"string","picture":"string","nip05":"string","lud16":"string","lud06":"string","website":"string","relays":"array"},
+    arrayItemTypes: {"relays":"string"},
+  },
+  "uploadBlob": {
+    required: ["privateKey"],
+    properties: ["content","contentType","filePath","privateKey","relays","serverUrl"],
+    propertyTypes: {"privateKey":"string","filePath":"string","content":"string","contentType":"string","serverUrl":"string","relays":"array"},
     arrayItemTypes: {"relays":"string"},
   },
 };

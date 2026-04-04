@@ -1,12 +1,22 @@
 import { z } from "zod";
 import {
   NostrEvent,
-  DEFAULT_RELAYS
+  DEFAULT_RELAYS,
+  type Kind,
 } from "../utils/index.js";
 import { generateKeypair, createEvent, getEventHash, signEvent, decode as nip19decode } from "snstr";
 import type { PublishResponse } from "snstr";
 import { getFreshPool } from "../utils/index.js";
 import { schnorr } from '@noble/curves/secp256k1';
+
+type NoteToolsPool = Pick<ReturnType<typeof getFreshPool>, "publish" | "close">;
+type NoteToolsPoolFactory = (relays?: string[]) => NoteToolsPool;
+
+let poolFactory: NoteToolsPoolFactory = getFreshPool;
+
+export function __setNoteToolsPoolFactoryForTests(factory?: NoteToolsPoolFactory): void {
+  poolFactory = factory ?? getFreshPool;
+}
 
 // Schema for getProfile tool
 export const getProfileToolConfig = {
@@ -123,7 +133,7 @@ export async function postAnonymousNote(
     // console.error(`Preparing to post anonymous note to ${relays.join(", ")}`);
     
     // Create a fresh pool for this request
-    const pool = getFreshPool(relays);
+    const pool = poolFactory(relays);
     
     try {
       // Generate a one-time keypair for anonymous posting
@@ -252,7 +262,7 @@ export async function createNote(
 export async function signNote(
   privateKey: string,
   noteEvent: {
-    kind: number;
+    kind: Kind;
     content: string;
     tags: string[][];
     created_at: number;
@@ -304,7 +314,7 @@ export async function publishNote(
     id: string;
     pubkey: string;
     created_at: number;
-    kind: number;
+    kind: Kind;
     tags: string[][];
     content: string;
     sig: string;
@@ -324,7 +334,7 @@ export async function publishNote(
     }
     
     // Create a fresh pool for this request
-    const pool = getFreshPool(relays);
+    const pool = poolFactory(relays);
     
     try {
       // Publish to relays and wait for actual relay OK responses

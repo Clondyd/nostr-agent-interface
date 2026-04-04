@@ -1,5 +1,11 @@
-import { describe, expect, test } from "bun:test";
-import { createInProcessToolRuntime } from "../app/tool-runtime.js";
+import { describe, expect, mock, test } from "bun:test";
+
+type ToolRuntimeModule = typeof import("../app/tool-runtime.js");
+
+async function loadToolRuntimeModule(): Promise<ToolRuntimeModule> {
+  mock.restore();
+  return import(`../app/tool-runtime.js?real=${Date.now()}-${Math.random()}`) as Promise<ToolRuntimeModule>;
+}
 
 function extractTextPayload(result: { content?: unknown[] }) {
   const content = Array.isArray(result.content) ? result.content : [];
@@ -15,6 +21,7 @@ function extractTextPayload(result: { content?: unknown[] }) {
 
 describe("in-process tool runtime", () => {
   test("returns the unified tool catalog from direct registration", async () => {
+    const { createInProcessToolRuntime } = await loadToolRuntimeModule();
     const runtime = await createInProcessToolRuntime();
 
     try {
@@ -38,6 +45,7 @@ describe("in-process tool runtime", () => {
   });
 
   test("dispatches valid tool calls directly and returns MCP-like payload", async () => {
+    const { createInProcessToolRuntime } = await loadToolRuntimeModule();
     const runtime = await createInProcessToolRuntime();
 
     try {
@@ -59,6 +67,7 @@ describe("in-process tool runtime", () => {
   });
 
   test("returns validation errors for malformed tool arguments", async () => {
+    const { createInProcessToolRuntime } = await loadToolRuntimeModule();
     const runtime = await createInProcessToolRuntime();
 
     try {
@@ -73,6 +82,7 @@ describe("in-process tool runtime", () => {
   });
 
   test("returns structured error for unknown tool names", async () => {
+    const { createInProcessToolRuntime } = await loadToolRuntimeModule();
     const runtime = await createInProcessToolRuntime();
 
     try {
@@ -87,6 +97,7 @@ describe("in-process tool runtime", () => {
   });
 
   test("allows repeated close without side effects", async () => {
+    const { createInProcessToolRuntime } = await loadToolRuntimeModule();
     const runtime = await createInProcessToolRuntime();
     await runtime.close();
     await runtime.close();
