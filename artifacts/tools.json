@@ -18,7 +18,7 @@
       "api"
     ]
   },
-  "toolCount": 40,
+  "toolCount": 48,
   "tools": [
     {
       "name": "analyzeNip19",
@@ -362,6 +362,42 @@
       }
     },
     {
+      "name": "deleteBlob",
+      "description": "Delete a blob from a Blossom server by sha256",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "type": "string",
+            "description": "Private key (hex or nsec) used to authorize the delete operation"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "SHA-256 hash of the blob to delete"
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063."
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
+          }
+        },
+        "required": [
+          "privateKey",
+          "sha256"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
       "name": "deleteEvent",
       "description": "Delete one or more events (kind 5 deletion request)",
       "inputSchema": {
@@ -394,6 +430,45 @@
         "required": [
           "privateKey",
           "targets"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "downloadBlob",
+      "description": "Download a blob by sha256 from a Blossom server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "SHA-256 hash of the blob to download"
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063 using privateKey."
+          },
+          "privateKey": {
+            "type": "string",
+            "description": "Optional private key used to resolve the preferred Blossom server when serverUrl is omitted"
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
+          },
+          "outputPath": {
+            "type": "string",
+            "description": "Optional file path to write the downloaded blob to. If omitted, the tool returns base64 content."
+          }
+        },
+        "required": [
+          "sha256"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -544,6 +619,71 @@
         },
         "required": [
           "pubkey"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "getBlossomServers",
+      "description": "Fetch a user's Blossom server list (kind 10063)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pubkey": {
+            "type": "string",
+            "description": "Public key to fetch Blossom servers for (hex format or npub format). Defaults to the pubkey derived from privateKey."
+          },
+          "privateKey": {
+            "type": "string",
+            "description": "Optional private key (hex or nsec) to derive the pubkey for self lookups and to AUTH to relays if needed"
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays to query for the Blossom server list"
+          },
+          "authPrivateKey": {
+            "type": "string",
+            "description": "Optional private key (hex or nsec) used only for NIP-42 AUTH if relays require it"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "getBlossomUrl",
+      "description": "Resolve a Blossom blob URL from sha256 and a server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "SHA-256 hash of the blob to resolve"
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063 using privateKey."
+          },
+          "privateKey": {
+            "type": "string",
+            "description": "Optional private key used to resolve the preferred Blossom server when serverUrl is omitted"
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
+          }
+        },
+        "required": [
+          "sha256"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -938,6 +1078,80 @@
         },
         "required": [
           "pubkey"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "listBlobs",
+      "description": "List blobs for a pubkey on a Blossom server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "type": "string",
+            "description": "Optional private key (hex or nsec) used to authorize the list operation and derive the default pubkey"
+          },
+          "pubkey": {
+            "type": "string",
+            "description": "Pubkey to list blobs for (hex format or npub). Defaults to the pubkey derived from privateKey."
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063 using privateKey."
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 10,
+            "description": "Maximum number of blobs to fetch"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "mirrorBlob",
+      "description": "Mirror a source URL to a Blossom server, falling back to download and re-upload on 404 mirror support gaps",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "type": "string",
+            "description": "Private key (hex or nsec) used to authorize the mirror operation"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Source URL to mirror to the Blossom server"
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063."
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
+          }
+        },
+        "required": [
+          "privateKey",
+          "sourceUrl"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1469,6 +1683,40 @@
       }
     },
     {
+      "name": "setBlossomServers",
+      "description": "Publish or update your Blossom server list (kind 10063)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "type": "string",
+            "description": "Private key (hex or nsec) for the account publishing the Blossom server list"
+          },
+          "servers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Blossom server URLs to publish in kind 10063. First entry becomes preferred."
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays to publish the server list to"
+          }
+        },
+        "required": [
+          "privateKey",
+          "servers"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
       "name": "setRelayList",
       "description": "Publish your relay list metadata (NIP-65 kind 10002)",
       "inputSchema": {
@@ -1711,6 +1959,48 @@
               "type": "string"
             },
             "description": "Optional list of relays to publish to"
+          }
+        },
+        "required": [
+          "privateKey"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "uploadBlob",
+      "description": "Upload a file or base64 payload to a Blossom server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "type": "string",
+            "description": "Private key (hex or nsec) used to authorize the upload"
+          },
+          "filePath": {
+            "type": "string",
+            "description": "Path to a local file to upload"
+          },
+          "content": {
+            "type": "string",
+            "description": "Base64-encoded file content to upload instead of filePath"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "Optional content type override. Defaults from the file extension or application/octet-stream."
+          },
+          "serverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Blossom server URL. If omitted, the preferred server is looked up from kind 10063."
+          },
+          "relays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of relays used when resolving the preferred Blossom server"
           }
         },
         "required": [

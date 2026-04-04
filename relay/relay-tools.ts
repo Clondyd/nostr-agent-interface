@@ -2,7 +2,7 @@ import { z } from "zod";
 import { schnorr } from "@noble/curves/secp256k1";
 import { createEvent } from "snstr";
 
-import { DEFAULT_RELAYS, KINDS } from "../utils/constants.js";
+import { DEFAULT_RELAYS, KINDS, type Kind } from "../utils/constants.js";
 import { NostrEvent, formatRelayList, normalizePrivateKey, npubToHex } from "../utils/index.js";
 import { publishNostrEvent, queryEvents, signNostrEvent } from "../event/event-tools.js";
 
@@ -44,7 +44,7 @@ function parseRelayListFromEvent(evt: NostrEvent): { url: string; read: boolean;
 
 async function getLatestEventForAuthor(params: {
   relays: string[];
-  kind: number;
+  kind: Kind;
   authorHex: string;
   authPrivateKey?: string;
 }): Promise<{ success: boolean; event: NostrEvent | null; message?: string }> {
@@ -160,13 +160,15 @@ export async function setRelayList(params: {
   if (!existing.success) {
     return { success: false, message: existing.message ?? "Failed to query existing relay list." };
   }
-  const base = createEvent({ kind: KINDS.RELAY_LIST, content: existing.event?.content ?? "", tags }, authorHex) as any;
+  const base: Omit<NostrEvent, "id" | "sig"> = {
+    ...createEvent({ kind: KINDS.RELAY_LIST, content: existing.event?.content ?? "", tags }, authorHex),
+    pubkey: authorHex,
+  };
   if (existing.event?.created_at && typeof base.created_at === "number" && base.created_at <= existing.event.created_at) {
     base.created_at = existing.event.created_at + 1;
   }
 
-  const unsigned: Omit<NostrEvent, "id" | "sig"> = { ...base, pubkey: authorHex };
-  const signedRes = await signNostrEvent({ privateKey: params.privateKey, event: unsigned });
+  const signedRes = await signNostrEvent({ privateKey: params.privateKey, event: base });
   if (!signedRes.success || !signedRes.signedEvent) return { success: false, message: signedRes.message };
 
   // Use the same key for NIP-42 AUTH if required.

@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 type ProfileToolsModule = typeof import('../profile/profile-tools.js');
+type ProfileToolsPoolFactory = NonNullable<Parameters<ProfileToolsModule["__setProfileToolsPoolFactoryForTests"]>[0]>;
 
 type MockPool = {
   close: ReturnType<typeof mock>;
@@ -21,7 +22,7 @@ async function loadProfileToolsWithMock(): Promise<{
   mock.restore();
   const importPath = `../profile/profile-tools.js?mock=${Date.now()}-${Math.random()}`;
   const tools = (await import(importPath)) as ProfileToolsModule;
-  tools.__setProfileToolsPoolFactoryForTests(getFreshPoolMock as typeof tools.__setProfileToolsPoolFactoryForTests extends (factory?: infer T) => void ? T : never);
+  tools.__setProfileToolsPoolFactoryForTests(getFreshPoolMock as ProfileToolsPoolFactory);
 
   return { tools, mockPool, getFreshPoolMock };
 }

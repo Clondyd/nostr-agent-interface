@@ -1,7 +1,8 @@
 import { z } from "zod";
 import {
   NostrEvent,
-  DEFAULT_RELAYS
+  DEFAULT_RELAYS,
+  type Kind,
 } from "../utils/index.js";
 import { generateKeypair, createEvent, getEventHash, signEvent, decode as nip19decode } from "snstr";
 import type { PublishResponse } from "snstr";
@@ -261,7 +262,7 @@ export async function createNote(
 export async function signNote(
   privateKey: string,
   noteEvent: {
-    kind: number;
+    kind: Kind;
     content: string;
     tags: string[][];
     created_at: number;
@@ -313,7 +314,7 @@ export async function publishNote(
     id: string;
     pubkey: string;
     created_at: number;
-    kind: number;
+    kind: Kind;
     tags: string[][];
     content: string;
     sig: string;

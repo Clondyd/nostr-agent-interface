@@ -66,6 +66,8 @@ type BlossomDownloadResult = {
   contentBase64?: string;
 };
 
+type UnsignedNostrEvent = Omit<NostrEvent, "id" | "sig">;
+
 function pubkeyFromPrivateKey(privateKeyHex: string): string {
   return Buffer.from(schnorr.getPublicKey(privateKeyHex)).toString("hex");
 }
@@ -182,7 +184,7 @@ export async function createBlossomAuthEvent(params: {
     tags.push(["x", normalizeSha256(params.sha256)]);
   }
 
-  const unsigned = createEvent(
+  const unsigned: UnsignedNostrEvent = createEvent(
     {
       kind: KINDS.BLOSSOM_AUTH,
       content: formatAuthContent(params.type),
@@ -190,11 +192,11 @@ export async function createBlossomAuthEvent(params: {
       tags,
     },
     pubkey,
-  ) as any;
+  );
 
   const id = await getEventHash(unsigned);
   const sig = await signEvent(id, privateKeyHex);
-  return { ...(unsigned as any), id, sig } as NostrEvent;
+  return { ...unsigned, id, sig };
 }
 
 export async function createBlossomAuthorizationHeader(params: {
@@ -517,21 +519,20 @@ export async function setBlossomServers(params: {
   }
 
   const tags = normalizedServers.map((server) => ["server", server]);
-  const base = createEvent(
+  const base: UnsignedNostrEvent = createEvent(
     {
       kind: KINDS.BLOSSOM_SERVER_LIST,
       content: existing.event?.content ?? "",
       tags,
     },
     authorHex,
-  ) as any;
+  );
 
   if (existing.event?.created_at && typeof base.created_at === "number" && base.created_at <= existing.event.created_at) {
     base.created_at = existing.event.created_at + 1;
   }
 
-  const unsigned: Omit<NostrEvent, "id" | "sig"> = { ...base, pubkey: authorHex };
-  const signedRes = await signNostrEvent({ privateKey: params.privateKey, event: unsigned });
+  const signedRes = await signNostrEvent({ privateKey: params.privateKey, event: base });
   if (!signedRes.success || !signedRes.signedEvent) {
     return { success: false, message: signedRes.message };
   }
@@ -916,7 +917,7 @@ export async function mirrorBlob(params: {
       };
     }
 
-    const shouldFallback = response.status === 404 || !response.ok;
+    const shouldFallback = response.status === 404;
     if (!shouldFallback) {
       const body = (await response.text().catch(() => "")).trim();
       return { success: false, message: body || `Mirror failed (${response.status}).` };

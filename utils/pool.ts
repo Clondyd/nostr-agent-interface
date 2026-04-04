@@ -1,6 +1,7 @@
 import { RelayPool } from "snstr";
 import type { PublishResponse } from "snstr";
 import { QUERY_TIMEOUT } from "./constants.js";
+import type { Kind } from "./constants.js";
 
 /**
  * Extended RelayPool with compatibility methods for existing codebase
@@ -125,7 +126,7 @@ export interface NostrEvent {
   id: string;
   pubkey: string;
   created_at: number;
-  kind: number;
+  kind: Kind;
   tags: string[][];
   content: string;
   sig: string;
@@ -137,7 +138,7 @@ export interface NostrEvent {
 export interface NostrFilter {
   ids?: string[];
   authors?: string[];
-  kinds?: number[];
+  kinds?: Kind[];
   since?: number;
   until?: number;
   limit?: number;

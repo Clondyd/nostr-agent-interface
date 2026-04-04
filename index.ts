@@ -79,6 +79,24 @@ import {
   setRelayList
 } from "./relay/relay-tools.js";
 import {
+  getBlossomServersToolConfig,
+  getBlossomServers,
+  setBlossomServersToolConfig,
+  setBlossomServers,
+  getBlossomUrlToolConfig,
+  getBlossomUrl,
+  uploadBlobToolConfig,
+  uploadBlob,
+  downloadBlobToolConfig,
+  downloadBlob,
+  listBlobsToolConfig,
+  listBlobs,
+  deleteBlobToolConfig,
+  deleteBlob,
+  mirrorBlobToolConfig,
+  mirrorBlob
+} from "./blossom/blossom-tools.js";
+import {
   getContactListToolConfig,
   getContactList,
   getFollowingToolConfig,
@@ -319,6 +337,27 @@ export function buildAllZapsResponseText(params: {
   ].join("\n");
 
   return `${summary}\n${formattedZaps}`;
+}
+
+function hasSuccessResult(value: unknown): value is { success: boolean } {
+  return typeof value === "object" && value !== null && "success" in value && typeof (value as { success?: unknown }).success === "boolean";
+}
+
+function formatStructuredToolPayload(value: unknown): string {
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function structuredToolTextResult(value: unknown) {
+  return {
+    isError: hasSuccessResult(value) ? value.success === false : false,
+    content: [{ type: "text" as const, text: formatStructuredToolPayload(value) }],
+  };
 }
 
 export function createNostrMcpServer(onToolRegister?: (tool: NostrToolRegistration) => void): McpServer {
@@ -1171,6 +1210,86 @@ server.tool(
   async ({ privateKey, relayList, relays }) => {
     const res = await setRelayList({ privateKey, relayList, relays });
     return { content: [{ type: "text", text: res.message }] };
+  },
+);
+
+server.tool(
+  "getBlossomServers",
+  "Fetch a user's Blossom server list (kind 10063)",
+  getBlossomServersToolConfig,
+  async ({ pubkey, privateKey, relays, authPrivateKey }) => {
+    const res = await getBlossomServers({ pubkey, privateKey, relays, authPrivateKey });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "setBlossomServers",
+  "Publish or update your Blossom server list (kind 10063)",
+  setBlossomServersToolConfig,
+  async ({ privateKey, servers, relays }) => {
+    const res = await setBlossomServers({ privateKey, servers, relays });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "getBlossomUrl",
+  "Resolve a Blossom blob URL from sha256 and a server",
+  getBlossomUrlToolConfig,
+  async ({ sha256, serverUrl, privateKey, relays }) => {
+    const res = await getBlossomUrl({ sha256, serverUrl, privateKey, relays });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "uploadBlob",
+  "Upload a file or base64 payload to a Blossom server",
+  uploadBlobToolConfig,
+  async ({ privateKey, filePath, content, contentType, serverUrl, relays }) => {
+    const res = await uploadBlob({ privateKey, filePath, content, contentType, serverUrl, relays });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "downloadBlob",
+  "Download a blob by sha256 from a Blossom server",
+  downloadBlobToolConfig,
+  async ({ sha256, serverUrl, privateKey, relays, outputPath }) => {
+    const res = await downloadBlob({ sha256, serverUrl, privateKey, relays, outputPath });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "listBlobs",
+  "List blobs for a pubkey on a Blossom server",
+  listBlobsToolConfig,
+  async ({ privateKey, pubkey, serverUrl, relays, limit }) => {
+    const res = await listBlobs({ privateKey, pubkey, serverUrl, relays, limit });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "deleteBlob",
+  "Delete a blob from a Blossom server by sha256",
+  deleteBlobToolConfig,
+  async ({ privateKey, sha256, serverUrl, relays }) => {
+    const res = await deleteBlob({ privateKey, sha256, serverUrl, relays });
+    return structuredToolTextResult(res);
+  },
+);
+
+server.tool(
+  "mirrorBlob",
+  "Mirror a source URL to a Blossom server, falling back to download and re-upload on 404 mirror support gaps",
+  mirrorBlobToolConfig,
+  async ({ privateKey, sourceUrl, serverUrl, relays }) => {
+    const res = await mirrorBlob({ privateKey, sourceUrl, serverUrl, relays });
+    return structuredToolTextResult(res);
   },
 );
 

@@ -65,7 +65,7 @@ export const KINDS = {
   RELAY_LIST: 10002, // NIP-65
   AUTH: 22242, // NIP-42
   BLOSSOM_AUTH: 24242, // BUD-01 auth event
-  BLOSSOM_SERVER_LIST: 10063, // BUD-06 server list
+  BLOSSOM_SERVER_LIST: 10063, // Blossom server-list events (BUD-03)
   ZAP_REQUEST: 9734,
   ZAP_RECEIPT: 9735,
 
@@ -87,3 +87,4 @@ export const KINDS = {
 
 export type KindName = keyof typeof KINDS;
 export type KindValue = (typeof KINDS)[KindName];
+export type Kind = KindValue | (number & {});

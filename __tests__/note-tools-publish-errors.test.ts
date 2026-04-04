@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 
 type NoteToolsModule = typeof import('../note/note-tools.js');
+type NoteToolsPoolFactory = NonNullable<Parameters<NoteToolsModule["__setNoteToolsPoolFactoryForTests"]>[0]>;
 
 type MockPool = {
   close: ReturnType<typeof mock>;
@@ -21,7 +22,7 @@ async function loadNoteToolsWithMock(): Promise<{
   mock.restore();
   const importPath = `../note/note-tools.js?mock=${Date.now()}-${Math.random()}`;
   const tools = (await import(importPath)) as NoteToolsModule;
-  tools.__setNoteToolsPoolFactoryForTests(getFreshPoolMock as typeof tools.__setNoteToolsPoolFactoryForTests extends (factory?: infer T) => void ? T : never);
+  tools.__setNoteToolsPoolFactoryForTests(getFreshPoolMock as NoteToolsPoolFactory);
 
   return { tools, mockPool, getFreshPoolMock };
 }

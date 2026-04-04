@@ -1,3 +1,5 @@
+import type { Kind } from "../utils/constants.js";
+
 // Profile and note utility functions
 
 export interface NostrProfile {
@@ -14,7 +16,7 @@ export interface NostrNote {
   pubkey: string;
   content: string;
   created_at: number;
-  kind: number;
+  kind: Kind;
   tags: string[][];
 }
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { convertNip19Entity, analyzeNip19Entity, ConversionInput } from "./conversion.js";
+import type { Kind } from "./constants.js";
 
 // Schema for convertNip19 tool
 export const convertNip19ToolConfig = {
@@ -24,7 +25,7 @@ export async function convertNip19(
   targetType: 'npub' | 'nsec' | 'note' | 'hex' | 'nprofile' | 'nevent' | 'naddr',
   relays?: string[],
   author?: string,
-  kind?: number,
+  kind?: Kind,
   identifier?: string
 ): Promise<{ success: boolean, message: string, result?: string, originalType?: string, data?: any }> {
   try {

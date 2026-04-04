@@ -10,7 +10,8 @@ import {
   QUERY_TIMEOUT,
   getFreshPool,
   npubToHex,
-  hexToNpub
+  hexToNpub,
+  type Kind,
 } from "../utils/index.js";
 
 // Interface for LNURL response data
@@ -545,7 +546,7 @@ export const getAllZapsToolConfig = {
 };
 
 // Helper function to decode a note identifier (note, nevent, naddr) to its components
-export async function decodeEventId(id: string): Promise<{ type: string, eventId?: string, pubkey?: string, kind?: number, relays?: string[], identifier?: string } | null> {
+export async function decodeEventId(id: string): Promise<{ type: string, eventId?: string, pubkey?: string, kind?: Kind, relays?: string[], identifier?: string } | null> {
   if (!id) return null;
   
   try {
@@ -579,7 +580,7 @@ export async function decodeEventId(id: string): Promise<{ type: string, eventId
             pubkey: data.author
           };
         } else if (decoded.type === 'naddr') {
-          const data = decoded.data as { identifier: string, pubkey: string, kind: number, relays?: string[] };
+          const data = decoded.data as { identifier: string, pubkey: string, kind: Kind, relays?: string[] };
           return {
             type: 'naddr',
             pubkey: data.pubkey,
@@ -730,7 +731,7 @@ export async function prepareAnonymousZap(
     // Determine if target is a pubkey or an event
     let hexPubkey: string | null = null;
     let eventId: string | null = null;
-    let eventCoordinate: { kind: number, pubkey: string, identifier: string } | null = null;
+    let eventCoordinate: { kind: Kind, pubkey: string, identifier: string } | null = null;
     
     // First, try to parse as a pubkey
     hexPubkey = npubToHex(target);

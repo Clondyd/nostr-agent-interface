@@ -116,17 +116,17 @@ const setBlossomServersSchema = z.object({
 
 ## Integration checklist
 
-Initial plan snapshot. This branch currently adds `blossom/blossom-tools.ts`, `utils/constants.ts`, and this planning doc; integration into `index.ts`, `app/cli.ts`, `app/api.ts`, `artifacts/tools.json`, `CLAUDE.md`, `README.md`, and dedicated tests is still pending in the current diff.
+Current PR status: Blossom tooling is now registered in `index.ts`, exposed through the existing CLI/API surfaces in `app/cli.ts` and `app/api.ts`, and reflected in `artifacts/tools.json`. Dedicated Blossom tests and README coverage are still pending.
 
-- [ ] Create `blossom/` directory
-- [ ] Implement `blossom/blossom-tools.ts` with all 8 tools
-- [ ] Register tools in `index.ts` (shared tool surface)
-- [ ] Add CLI commands in `app/cli.ts`
-- [ ] Add API routes in `app/api.ts`
-- [ ] Write tests (unit + integration against mock server or blossom.band)
-- [ ] Update `artifacts/tools.json` via `bun run build`
-- [ ] Update CLAUDE.md tool count
-- [ ] Update README.md with blossom section
+- [x] Create `blossom/` directory
+- [x] Implement `blossom/blossom-tools.ts` with all 8 tools
+- [x] Register tools in `index.ts` (shared tool surface)
+- [x] Expose Blossom tools through the existing CLI in `app/cli.ts`
+- [x] Expose Blossom tools through the existing API in `app/api.ts`
+- [ ] Write Blossom-specific tests (unit + integration against mock server or blossom.band)
+- [x] Update `artifacts/tools.json` via `bun run build`
+- [x] Update `CLAUDE.md` tool count
+- [ ] Update README.md with a Blossom section
 
 ## What we skip from blup
 
