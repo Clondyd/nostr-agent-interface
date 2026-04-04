@@ -7,6 +7,15 @@ import type { PublishResponse } from "snstr";
 import { getFreshPool } from "../utils/index.js";
 import { schnorr } from '@noble/curves/secp256k1';
 
+type ProfileToolsPool = Pick<ReturnType<typeof getFreshPool>, "publish" | "close">;
+type ProfileToolsPoolFactory = (relays?: string[]) => ProfileToolsPool;
+
+let poolFactory: ProfileToolsPoolFactory = getFreshPool;
+
+export function __setProfileToolsPoolFactoryForTests(factory?: ProfileToolsPoolFactory): void {
+  poolFactory = factory ?? getFreshPool;
+}
+
 function countPublishSuccesses(results: PromiseSettledResult<PublishResponse>[]): number {
   return results.filter((r) => r.status === "fulfilled" && r.value?.success === true).length;
 }
@@ -148,7 +157,7 @@ export async function createProfile(
     if (profileData.website) metadata.website = profileData.website;
     
     // Create a fresh pool for this request
-    const pool = getFreshPool(relays);
+    const pool = poolFactory(relays);
     
     try {
       // Create the profile event template
@@ -262,7 +271,7 @@ export async function postNote(
     const publicKey = getPublicKeyFromPrivate(normalizedPrivateKey);
     
     // Create a fresh pool for this request
-    const pool = getFreshPool(relays);
+    const pool = poolFactory(relays);
     
     try {
       // Create the note event template

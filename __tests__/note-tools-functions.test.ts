@@ -25,13 +25,9 @@ async function loadNoteToolsWithMock(): Promise<{
   const getFreshPoolMock = mock(() => mockPool);
 
   mock.restore();
-  mock.module('../utils/index.js', () => ({
-    DEFAULT_RELAYS: ['wss://mock.relay'],
-    getFreshPool: getFreshPoolMock,
-  }));
-
   const importPath = `../note/note-tools.js?mock=${Date.now()}-${Math.random()}`;
   const tools = (await import(importPath)) as NoteToolsModule;
+  tools.__setNoteToolsPoolFactoryForTests(getFreshPoolMock as typeof tools.__setNoteToolsPoolFactoryForTests extends (factory?: infer T) => void ? T : never);
 
   return {
     tools,
@@ -58,10 +54,12 @@ describe('Note Tools Functions', () => {
   });
 
   afterEach(() => {
+    tools.__setNoteToolsPoolFactoryForTests();
     mock.restore();
   });
 
   afterAll(() => {
+    tools.__setNoteToolsPoolFactoryForTests();
     mock.restore();
   });
 
