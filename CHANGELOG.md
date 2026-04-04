@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-04-04
+
 ### Changed
 - Reframed project documentation around Nostr Agent Interface as an extension of Nostr MCP Server's JARC tool contracts, with CLI/API as preferred operational interfaces and MCP retained as supported compatibility mode.
 - Updated release/process/docs guidance and package metadata links to point to `nostr-agent-interface` repository coordinates.
@@ -19,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added structured API audit logging with request/response events, sensitive-field redaction, and `x-request-id` correlation controls (`NOSTR_AGENT_API_AUDIT_LOG_ENABLED`, `NOSTR_AGENT_API_AUDIT_LOG_INCLUDE_BODIES`).
 - Added `/v1` API route compatibility layer (`/v1/health`, `/v1/tools`, `/v1/tools/:toolName`) while preserving existing route support.
 - Added dedicated regression suites for in-process CLI command parsing (`cli-core`), API in-memory request lifecycle and sanitization (`api-core`), and full MCP dispatch/schema stability (`mcp-dispatch`), plus expanded zap-processing edge coverage.
+- Added Blossom storage tooling across CLI/API/MCP surfaces: `getBlossomServers`, `setBlossomServers`, `getBlossomUrl`, `uploadBlob`, `downloadBlob`, `listBlobs`, `deleteBlob`, and `mirrorBlob`.
+- Added repo-local Codex skill documentation for safe `nostr-agent-interface cli` usage and refreshed model-facing docs to match the 48-tool surface.
+
+### Fixed
+- Updated `snstr` to `v0.3.2`, picking up the websocket cleanup and exit-code fix included after `3.0.0`.
+
 
 ## [3.0.0] - 2026-02-13
 

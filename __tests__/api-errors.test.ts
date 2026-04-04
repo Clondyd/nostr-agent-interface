@@ -6,8 +6,6 @@ import { describeNetwork } from "./support/network-suite.js";
 
 const API_HOST = "127.0.0.1";
 const TEST_API_KEY = "test-api-key";
-const TEST_BASE_OFFSET = 1000;
-
 type ApiPortConfig = {
   API_PORT: number;
   SECURED_API_PORT: number;
@@ -25,21 +23,24 @@ type ApiPortConfig = {
 
 let cachedApiPorts: ApiPortConfig | null = null;
 
-function makeApiPortConfig(basePort: number): ApiPortConfig {
-  const SECURED_API_PORT = basePort + TEST_BASE_OFFSET;
-  const RATE_LIMITED_API_PORT = basePort + TEST_BASE_OFFSET * 2;
-  const RATE_LIMITED_ROTATING_KEY_API_PORT = basePort + TEST_BASE_OFFSET * 3;
-  const RATE_LIMITED_SPOOFED_PROXY_API_PORT = basePort + TEST_BASE_OFFSET * 4;
-  const BODY_LIMITED_API_PORT = basePort + TEST_BASE_OFFSET * 5;
-
-  return {
-    API_PORT: basePort,
+function makeApiPortConfig(ports: number[]): ApiPortConfig {
+  const [
+    API_PORT,
     SECURED_API_PORT,
     RATE_LIMITED_API_PORT,
     RATE_LIMITED_ROTATING_KEY_API_PORT,
     RATE_LIMITED_SPOOFED_PROXY_API_PORT,
     BODY_LIMITED_API_PORT,
-    API_BASE_URL: `http://${API_HOST}:${basePort}`,
+  ] = ports;
+
+  return {
+    API_PORT,
+    SECURED_API_PORT,
+    RATE_LIMITED_API_PORT,
+    RATE_LIMITED_ROTATING_KEY_API_PORT,
+    RATE_LIMITED_SPOOFED_PROXY_API_PORT,
+    BODY_LIMITED_API_PORT,
+    API_BASE_URL: `http://${API_HOST}:${API_PORT}`,
     SECURED_API_BASE_URL: `http://${API_HOST}:${SECURED_API_PORT}`,
     RATE_LIMITED_API_BASE_URL: `http://${API_HOST}:${RATE_LIMITED_API_PORT}`,
     RATE_LIMITED_ROTATING_KEY_API_BASE_URL: `http://${API_HOST}:${RATE_LIMITED_ROTATING_KEY_API_PORT}`,
@@ -65,9 +66,19 @@ function findAvailablePort(): Promise<number> {
   });
 }
 
+async function findDistinctAvailablePorts(count: number): Promise<number[]> {
+  const ports = new Set<number>();
+
+  while (ports.size < count) {
+    ports.add(await findAvailablePort());
+  }
+
+  return [...ports];
+}
+
 async function getApiPortConfig(): Promise<ApiPortConfig> {
   if (!cachedApiPorts) {
-    cachedApiPorts = makeApiPortConfig(await findAvailablePort());
+    cachedApiPorts = makeApiPortConfig(await findDistinctAvailablePorts(6));
   }
   return cachedApiPorts;
 }
