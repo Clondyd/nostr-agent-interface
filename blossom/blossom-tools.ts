@@ -7,11 +7,15 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { createEvent, getEventHash, signEvent } from "snstr";
 
 import { publishNostrEvent, queryEvents, signNostrEvent } from "../event/event-tools.js";
-import { DEFAULT_RELAYS, KINDS } from "../utils/constants.js";
+import { DEFAULT_RELAYS, KINDS, QUERY_TIMEOUT } from "../utils/constants.js";
 import { NostrEvent, normalizePrivateKey, npubToHex } from "../utils/index.js";
 
 const BLOSSOM_SERVER_CACHE_TTL_MS = 60_000;
 const DEFAULT_BLOSSOM_LIST_LIMIT = 10;
+const BLOSSOM_FETCH_TIMEOUT_MS = QUERY_TIMEOUT;
+const BLOSSOM_TRANSFER_TIMEOUT_MS = 30_000;
+const BLOSSOM_LOCAL_HTTP_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+const ALLOW_INSECURE_BLOSSOM_HTTP = /^(1|true|yes)$/i.test(process.env.ALLOW_INSECURE_BLOSSOM_HTTP ?? "");
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   ".apng": "image/apng",
@@ -68,8 +72,12 @@ function pubkeyFromPrivateKey(privateKeyHex: string): string {
 
 function normalizeHttpUrl(url: string): string {
   const parsed = new URL(url.trim());
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`Invalid Blossom server URL: ${url} (expected http:// or https://)`);
+  const isHttps = parsed.protocol === "https:";
+  const isAllowedHttp = parsed.protocol === "http:" && (BLOSSOM_LOCAL_HTTP_HOSTS.has(parsed.hostname) || ALLOW_INSECURE_BLOSSOM_HTTP);
+  if (!isHttps && !isAllowedHttp) {
+    throw new Error(
+      `Invalid Blossom server URL: ${url} (expected https://, or http:// only for localhost/loopback hosts or when ALLOW_INSECURE_BLOSSOM_HTTP is enabled)`,
+    );
   }
   return parsed.toString().replace(/\/$/, "");
 }
@@ -100,6 +108,52 @@ function decodeBase64(content: string): Buffer {
 
 function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function describeFetchTarget(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  if (typeof Request !== "undefined" && input instanceof Request) return input.url;
+  return String(input);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = BLOSSOM_FETCH_TIMEOUT_MS): Promise<Response> {
+  const request = init ?? {};
+  const controller = new AbortController();
+  const upstreamSignal = request.signal;
+  let didTimeout = false;
+  const onAbort = () => controller.abort(upstreamSignal?.reason);
+
+  if (upstreamSignal) {
+    if (upstreamSignal.aborted) {
+      controller.abort(upstreamSignal.reason);
+    } else {
+      upstreamSignal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+
+  const timeout = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, { ...request, signal: controller.signal });
+  } catch (error) {
+    if (didTimeout || (isAbortError(error) && !upstreamSignal?.aborted)) {
+      throw new Error(`Request to ${describeFetchTarget(input)} timed out after ${timeoutMs}ms.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    if (upstreamSignal) {
+      upstreamSignal.removeEventListener("abort", onAbort);
+    }
+  }
 }
 
 function formatAuthContent(type: BlossomAuthType): string {
@@ -308,7 +362,7 @@ async function uploadBytes(params: {
     sha256,
   });
 
-  const preflightResponse = await fetch(uploadUrl, {
+  const preflightResponse = await fetchWithTimeout(uploadUrl, {
     method: "HEAD",
     headers: {
       Authorization: authorization,
@@ -316,7 +370,7 @@ async function uploadBytes(params: {
       "X-Content-Type": contentType,
       "X-Content-Length": String(total),
     },
-  });
+  }, BLOSSOM_FETCH_TIMEOUT_MS);
 
   if (!preflightResponse.ok && preflightResponse.status !== 404) {
     const reason = preflightResponse.headers.get("X-Reason")?.trim();
@@ -324,7 +378,7 @@ async function uploadBytes(params: {
     throw new Error(reason || body || `Upload rejected (${preflightResponse.status}).`);
   }
 
-  const response = await fetch(uploadUrl, {
+  const response = await fetchWithTimeout(uploadUrl, {
     method: "PUT",
     headers: {
       Authorization: authorization,
@@ -332,7 +386,7 @@ async function uploadBytes(params: {
       "Content-Length": String(total),
     },
     body: Buffer.from(bytes),
-  } as any);
+  } as any, BLOSSOM_TRANSFER_TIMEOUT_MS);
 
   if (!response.ok) {
     const body = (await response.text().catch(() => "")).trim();
@@ -626,13 +680,17 @@ export async function downloadBlob(params: {
   }
 
   try {
-    const response = await fetch(urlResult.url);
+    const response = await fetchWithTimeout(urlResult.url, undefined, BLOSSOM_TRANSFER_TIMEOUT_MS);
     if (!response.ok) {
       const body = (await response.text().catch(() => "")).trim();
       return { success: false, message: body || `Download failed (${response.status}).` };
     }
 
     const bytes = new Uint8Array(await response.arrayBuffer());
+    const actualSha256 = sha256Hex(bytes);
+    if (actualSha256 !== urlResult.sha256) {
+      throw new Error(`SHA-256 mismatch for ${urlResult.url}: expected ${urlResult.sha256}, got ${actualSha256}.`);
+    }
     const type = response.headers.get("content-type")?.trim() || "application/octet-stream";
     const blob = {
       sha256: urlResult.sha256,
@@ -720,7 +778,7 @@ export async function listBlobs(params: {
       });
     }
 
-    const response = await fetch(listUrl, { headers });
+    const response = await fetchWithTimeout(listUrl, { headers }, BLOSSOM_FETCH_TIMEOUT_MS);
     if (!response.ok) {
       const body = (await response.text().catch(() => "")).trim();
       return { success: false, message: body || `List failed (${response.status}).` };
@@ -785,12 +843,12 @@ export async function deleteBlob(params: {
       type: "delete",
       sha256,
     });
-    const response = await fetch(`${resolved.serverUrl}/${sha256}`, {
+    const response = await fetchWithTimeout(`${resolved.serverUrl}/${sha256}`, {
       method: "DELETE",
       headers: {
         Authorization: authorization,
       },
-    });
+    }, BLOSSOM_FETCH_TIMEOUT_MS);
 
     if (!response.ok) {
       const body = (await response.text().catch(() => "")).trim();
@@ -838,14 +896,14 @@ export async function mirrorBlob(params: {
       privateKey: params.privateKey,
       type: "upload",
     });
-    const response = await fetch(`${resolved.serverUrl}/mirror`, {
+    const response = await fetchWithTimeout(`${resolved.serverUrl}/mirror`, {
       method: "PUT",
       headers: {
         Authorization: authorization,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ url: params.sourceUrl }),
-    });
+    }, BLOSSOM_TRANSFER_TIMEOUT_MS);
 
     if (response.ok) {
       const blob = await parseBlobResponse(response, resolved.serverUrl);
@@ -864,7 +922,7 @@ export async function mirrorBlob(params: {
       return { success: false, message: body || `Mirror failed (${response.status}).` };
     }
 
-    const sourceResponse = await fetch(params.sourceUrl);
+    const sourceResponse = await fetchWithTimeout(params.sourceUrl, undefined, BLOSSOM_TRANSFER_TIMEOUT_MS);
     if (!sourceResponse.ok) {
       const body = (await sourceResponse.text().catch(() => "")).trim();
       return { success: false, message: body || `Error fetching source (${sourceResponse.status}).` };

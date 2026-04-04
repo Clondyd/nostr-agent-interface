@@ -116,6 +116,8 @@ const setBlossomServersSchema = z.object({
 
 ## Integration checklist
 
+Initial plan snapshot. This branch currently adds `blossom/blossom-tools.ts`, `utils/constants.ts`, and this planning doc; integration into `index.ts`, `app/cli.ts`, `app/api.ts`, `artifacts/tools.json`, `CLAUDE.md`, `README.md`, and dedicated tests is still pending in the current diff.
+
 - [ ] Create `blossom/` directory
 - [ ] Implement `blossom/blossom-tools.ts` with all 8 tools
 - [ ] Register tools in `index.ts` (shared tool surface)
