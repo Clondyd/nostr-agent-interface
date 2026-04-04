@@ -62,7 +62,9 @@ async function waitForApiReady(baseUrl: string, timeoutMs = 5000): Promise<void>
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${baseUrl}/health`);
+      const res = await fetch(`${baseUrl}/health`, {
+        headers: { connection: "close" },
+      });
       if (res.ok) return;
     } catch {
       // Not ready yet
@@ -110,7 +112,9 @@ async function startApiHarness() {
     invoke: async (options: InvokeRequestOptions): Promise<InvokeResponse> => {
       const method = options.method ?? "GET";
       const url = `${baseUrl}${options.path}`;
-      const requestHeaders: Record<string, string> = {};
+      const requestHeaders: Record<string, string> = {
+        connection: "close",
+      };
       if (options.headers) {
         for (const [key, value] of Object.entries(options.headers)) {
           requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
@@ -155,8 +159,20 @@ async function startApiHarness() {
     },
 
     shutdown: async () => {
-      apiProcess.kill();
-      await apiProcess.exited;
+      apiProcess.kill("SIGTERM");
+
+      const exited = await Promise.race([
+        apiProcess.exited.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1500)),
+      ]);
+
+      if (!exited) {
+        apiProcess.kill("SIGKILL");
+        await Promise.race([
+          apiProcess.exited,
+          new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+        ]);
+      }
     },
   };
 }
@@ -300,8 +316,7 @@ describe("Interface parity (CLI, API)", () => {
   });
 
   afterAll(async () => {
-    await api?.shutdown();
-    await mcp?.close();
+    await Promise.allSettled([api?.shutdown(), mcp?.close()]);
     mock.restore();
   });
 
