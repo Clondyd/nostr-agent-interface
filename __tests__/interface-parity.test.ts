@@ -22,10 +22,6 @@ type TransportResult = {
   body: unknown;
 };
 
-async function resolveNodeCommand(): Promise<string> {
-  return (await Bun.which("node")) ?? process.execPath;
-}
-
 async function resolveBuiltOrSourceEntry(): Promise<string> {
   const built = path.resolve(process.cwd(), "build/app/index.js");
   if (await Bun.file(built).exists()) {
@@ -33,6 +29,14 @@ async function resolveBuiltOrSourceEntry(): Promise<string> {
   }
 
   return path.resolve(process.cwd(), "app/index.ts");
+}
+
+async function resolveRuntimeCommand(entrypoint: string): Promise<string> {
+  if (entrypoint.endsWith(".ts")) {
+    return process.execPath;
+  }
+
+  return (await Bun.which("node")) ?? process.execPath;
 }
 
 /**
@@ -120,10 +124,10 @@ type McpHarness = {
 
 async function startMcpHarness(): Promise<McpHarness> {
   mock.restore();
-  const nodeCommand = await resolveNodeCommand();
   const mcpEntry = await resolveBuiltOrSourceEntry();
+  const runtimeCommand = await resolveRuntimeCommand(mcpEntry);
   const serverProcess = {
-    command: nodeCommand,
+    command: runtimeCommand,
     args: [mcpEntry, "mcp"],
     cwd: process.cwd(),
     stderr: "pipe" as const,
@@ -213,7 +217,7 @@ function parseJsonOutput<T>(output: string): T {
 
 async function runCliJson(args: string[]): Promise<TransportResult> {
   const cliEntry = await resolveBuiltOrSourceEntry();
-  const command = await resolveNodeCommand();
+  const command = await resolveRuntimeCommand(cliEntry);
   const proc = Bun.spawn({
     cmd: [command, cliEntry, "cli", ...args, "--json"],
     cwd: process.cwd(),
