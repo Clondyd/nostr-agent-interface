@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
-import { createServer } from "node:net";
 import path from "node:path";
+import { startApiServer } from "../app/api.js";
 import { createManagedMcpClient } from "../app/mcp-client.js";
 
 type InvokeRequestOptions = {
@@ -36,53 +36,73 @@ async function resolveBuiltOrSourceEntry(): Promise<string> {
 }
 
 /**
- * Finds an available port by binding a temporary server to port 0.
- */
-function findAvailablePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address();
-      server.close(() => {
-        if (addr && typeof addr !== "string" && typeof addr.port === "number") {
-          resolve(addr.port);
-        } else {
-          reject(new Error("Could not resolve ephemeral port"));
-        }
-      });
-    });
-  });
-}
-
-/**
- * Polls the health endpoint until the API is ready or timeout.
- */
-async function waitForApiReady(baseUrl: string, timeoutMs = 15000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`${baseUrl}/health`, {
-        headers: { connection: "close" },
-      });
-      if (res.ok) return;
-    } catch {
-      // Not ready yet
-    }
-    await new Promise((r) => setTimeout(r, 50));
-  }
-  throw new Error(`API did not become ready within ${timeoutMs}ms`);
-}
-
-/**
  * Starts the API harness by spawning the real API process and issuing real
  * HTTP requests. Exercises the actual request handling layer in app/api.ts.
  */
 async function startApiHarness() {
   mock.restore();
-  let port: number;
   try {
-    port = await findAvailablePort();
+    const handle = await startApiServer({
+      host: "127.0.0.1",
+      port: 0,
+      auditLogEnabled: false,
+    });
+    const baseUrl = `http://${handle.host}:${handle.port}`;
+
+    return {
+      invoke: async (options: InvokeRequestOptions): Promise<InvokeResponse> => {
+        const method = options.method ?? "GET";
+        const url = `${baseUrl}${options.path}`;
+        const requestHeaders: Record<string, string> = {
+          connection: "close",
+        };
+        if (options.headers) {
+          for (const [key, value] of Object.entries(options.headers)) {
+            requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
+          }
+        }
+        const body = options.bodyChunks?.join("") ?? undefined;
+
+        const res = await fetch(url, {
+          method,
+          headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
+          body: method === "POST" && body !== undefined ? body : undefined,
+        });
+
+        const rawBody = await res.text();
+        type ParseFailure = { __jsonParseError: string; __raw: string };
+        let parsedBody: unknown = null;
+        let parseFailure: ParseFailure | null = null;
+        if (rawBody.trim()) {
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (error) {
+            parseFailure = {
+              __jsonParseError: error instanceof Error ? error.message : String(error),
+              __raw: rawBody,
+            };
+            parsedBody = parseFailure;
+            console.error("Failed to parse API JSON response:", parseFailure.__jsonParseError, parseFailure.__raw);
+          }
+        }
+
+        const responseHeaders: Record<string, string> = {};
+        res.headers.forEach((value, key) => {
+          responseHeaders[key.toLowerCase()] = value;
+        });
+
+        return {
+          statusCode: res.status,
+          headers: responseHeaders,
+          body: parsedBody,
+          rawBody,
+        };
+      },
+
+      shutdown: async () => {
+        await handle.shutdown();
+      },
+    };
   } catch (error) {
     if (error instanceof Error && (error as NodeJS.ErrnoException).code === "EPERM") {
       console.warn("Skipping API parity harness: network bind not permitted in this environment");
@@ -90,91 +110,6 @@ async function startApiHarness() {
     }
     throw error;
   }
-  const nodeCommand = await resolveNodeCommand();
-  const apiEntry = await resolveBuiltOrSourceEntry();
-
-  const apiProcess = Bun.spawn({
-    cmd: [nodeCommand, apiEntry, "api", "--port", String(port)],
-    cwd: process.cwd(),
-    stderr: "pipe",
-    stdout: "pipe",
-    env: {
-      ...process.env,
-      NOSTR_AGENT_API_PORT: String(port),
-      NOSTR_AGENT_API_AUDIT_LOG_ENABLED: "false",
-    },
-  });
-
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForApiReady(baseUrl);
-
-  return {
-    invoke: async (options: InvokeRequestOptions): Promise<InvokeResponse> => {
-      const method = options.method ?? "GET";
-      const url = `${baseUrl}${options.path}`;
-      const requestHeaders: Record<string, string> = {
-        connection: "close",
-      };
-      if (options.headers) {
-        for (const [key, value] of Object.entries(options.headers)) {
-          requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
-        }
-      }
-      const body = options.bodyChunks?.join("") ?? undefined;
-
-      const res = await fetch(url, {
-        method,
-        headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-        body: method === "POST" && body !== undefined ? body : undefined,
-      });
-
-      const rawBody = await res.text();
-      type ParseFailure = { __jsonParseError: string; __raw: string };
-      let parsedBody: unknown = null;
-      let parseFailure: ParseFailure | null = null;
-      if (rawBody.trim()) {
-        try {
-          parsedBody = JSON.parse(rawBody);
-        } catch (error) {
-          parseFailure = {
-            __jsonParseError: error instanceof Error ? error.message : String(error),
-            __raw: rawBody,
-          };
-          parsedBody = parseFailure;
-          console.error("Failed to parse API JSON response:", parseFailure.__jsonParseError, parseFailure.__raw);
-        }
-      }
-
-      const responseHeaders: Record<string, string> = {};
-      res.headers.forEach((value, key) => {
-        responseHeaders[key.toLowerCase()] = value;
-      });
-
-      return {
-        statusCode: res.status,
-        headers: responseHeaders,
-        body: parsedBody,
-        rawBody,
-      };
-    },
-
-    shutdown: async () => {
-      apiProcess.kill("SIGTERM");
-
-      const exited = await Promise.race([
-        apiProcess.exited.then(() => true),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1500)),
-      ]);
-
-      if (!exited) {
-        apiProcess.kill("SIGKILL");
-        await Promise.race([
-          apiProcess.exited,
-          new Promise<void>((resolve) => setTimeout(resolve, 1500)),
-        ]);
-      }
-    },
-  };
 }
 
 type McpHarness = {
