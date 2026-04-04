@@ -24,7 +24,7 @@ jobs:
         run: bun run build
 
       - name: Run core tests
-        run: bun test
+        run: bun run test
 
       - name: Run interface parity tests
         run: bun run test:parity

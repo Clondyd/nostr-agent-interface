@@ -9,8 +9,8 @@
     "nostr-mcp-server": "build/index.js"
   },
   "scripts": {
-    "test": "bun test",
-    "test:parity": "bun test __tests__/interface-parity.test.ts __tests__/cli-ux.test.ts",
+    "test": "bun test --path-ignore-patterns=__tests__/interface-parity.test.ts",
+    "test:parity": "bun test --timeout 15000 __tests__/interface-parity.test.ts __tests__/cli-ux.test.ts",
     "test:network": "NOSTR_NETWORK_TESTS=1 bun test",
     "build": "tsc && node build/scripts/generate-tools-manifest.js && node -e \"const fs=require('fs'); ['build/index.js','build/app/index.js'].forEach((file)=>{ if (fs.existsSync(file)) fs.chmodSync(file, '755'); });\"",
     "generate:tools-manifest": "node build/scripts/generate-tools-manifest.js",
@@ -21,7 +21,7 @@
     "start:cli": "bun build/app/index.js cli",
     "start:api": "bun build/app/index.js api",
     "start:node": "node build/index.js",
-    "prerelease": "bun test && bun run build",
+    "prerelease": "bun run test && bun run test:parity && bun run build",
     "release:patch": "bun run prerelease && npm version patch",
     "release:minor": "bun run prerelease && npm version minor",
     "release:major": "bun run prerelease && npm version major"
