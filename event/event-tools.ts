@@ -502,7 +502,19 @@ export async function publishNostrEvent(params: {
             return;
           }
           if (msg[0] === "OK" && msg[1] === params.signedEvent.id) {
-            finish(msg[2] === true, typeof msg[3] === "string" ? msg[3] : undefined);
+            const ok = msg[2] === true;
+            const reason = typeof msg[3] === "string" ? msg[3] : undefined;
+            // Some relays (e.g. Buzz) respond to our initial, pre-AUTH EVENT send
+            // with an immediate OK-false "auth-required: ..." rather than staying
+            // silent until the AUTH challenge round-trip completes. That reply is
+            // not final — we're about to (or already did) authenticate and resend
+            // the same event. Swallow this specific rejection and wait for the OK
+            // that corresponds to the post-AUTH resend instead; the outer timeout
+            // still guards against a relay that never follows up.
+            if (!ok && !resentAfterAuth && authPrivateKeyHex && reason && /^auth-required:/i.test(reason)) {
+              return;
+            }
+            finish(ok, reason);
           }
         } catch {
           // ignore malformed
