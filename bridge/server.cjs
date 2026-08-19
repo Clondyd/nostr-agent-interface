@@ -24,15 +24,16 @@ child.on('exit', (code, signal) => {
 });
 child.stderr.on('data', (d) => console.error('[bridge] child stderr: ' + d.toString('utf8').trim()));
 
+// IMPORTANT: the actual MCP protocol logic (tools/list, tools/call, etc.) lives
+// in the CHILD process (the real nostr-agent-interface MCP server), not in this
+// bridge. This Server object is only used to get a spec-compliant SSE
+// transport wired up (handshake framing, session ids) — every real message is
+// forwarded verbatim to the child's stdin, and every reply from the child's
+// stdout is forwarded back out over the SSE transport. Do NOT rely on this
+// Server object's own request handling for anything except the base
+// initialize/close lifecycle it implements automatically.
 const server = new Server({ name: 'nostr-bridge', version: '1.0.0' }, { capabilities: {} });
 
-// Single-session state. The MCP SDK's Server/Protocol only supports one
-// attached transport at a time — a second server.connect() call while a
-// prior transport is still attached throws "Already connected to a
-// transport", and left uncaught that kills the whole process (this is the
-// bug that was crash-looping the container every ~9min). Fix: always tear
-// down any existing session's transport BEFORE connecting a new one, and
-// never let a connect error escape uncaught.
 let currentSession = null; // { transport, sessionId }
 
 const app = express();
@@ -75,6 +76,11 @@ app.get(SSE_PATH, async (req, res) => {
   currentSession = { transport, sessionId: transport.sessionId };
   console.error('[bridge] session established ' + transport.sessionId);
 
+  transport.onmessage = (msg) => {
+    console.error('[bridge] client -> child (session ' + transport.sessionId + '): ' + JSON.stringify(msg));
+    child.stdin.write(JSON.stringify(msg) + '\n');
+  };
+
   const clear = () => {
     if (currentSession && currentSession.sessionId === transport.sessionId) currentSession = null;
   };
@@ -106,6 +112,33 @@ app.listen(PORT, () => {
   console.error('[bridge] listening on ' + PORT);
   console.error('[bridge] SSE endpoint: http://localhost:' + PORT + SSE_PATH);
   console.error('[bridge] POST messages: http://localhost:' + PORT + MESSAGE_PATH);
+});
+
+let stdoutBuf = '';
+child.stdout.on('data', (chunk) => {
+  stdoutBuf += chunk.toString('utf8');
+  const lines = stdoutBuf.split(/\r?\n/);
+  stdoutBuf = lines.pop() ?? '';
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let msg;
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      console.error('[bridge] child non-JSON stdout: ' + line);
+      continue;
+    }
+    console.error('[bridge] child -> client: ' + line);
+    if (currentSession) {
+      try {
+        currentSession.transport.send(msg);
+      } catch (err) {
+        console.error('[bridge] failed to send to session ' + currentSession.sessionId + ':', err);
+      }
+    } else {
+      console.error('[bridge] no active session to deliver child message to (dropped)');
+    }
+  }
 });
 
 process.on('unhandledRejection', (err) => console.error('[bridge] unhandledRejection (survived):', err));
