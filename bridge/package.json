@@ -1,0 +1,12 @@
+{
+  "name": "nostr-mcp-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SSE bridge for the nostr-agent-interface stdio MCP server. Custom-written replacement for supergateway: fixes a crash where a second concurrent /sse connection threw 'Already connected to a transport' and killed the whole process.",
+  "main": "server.cjs",
+  "dependencies": {
+    "express": "^4.19.2",
+    "body-parser": "^1.20.3",
+    "@modelcontextprotocol/sdk": "^1.18.2"
+  }
+}
