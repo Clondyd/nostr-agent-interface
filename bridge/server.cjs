@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 
 function checkAuth(req, res) {
   if (!BEARER_TOKEN) return true;
-  if (req.headers['authorization'] === 'Bearer ' + BEARER_TOKEN) return true;
+    if (req.query.token === BEARER_TOKEN) return true;
   res.status(401).json({ status: 'error', code: 401, message: 'Unauthorized' });
   return false;
 }
